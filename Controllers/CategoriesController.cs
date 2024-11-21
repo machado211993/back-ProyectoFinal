@@ -22,6 +22,7 @@ namespace ProductCategoryCrud.Controllers
 
         // GET: api/Categories
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
         {
             return await _context.Categories.ToListAsync();
@@ -43,6 +44,7 @@ namespace ProductCategoryCrud.Controllers
 
         // POST: api/Categories
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Category>> PostCategory(Category category)
         {
             _context.Categories.Add(category);

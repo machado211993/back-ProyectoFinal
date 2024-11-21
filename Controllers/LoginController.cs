@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ProductCategoryCrud.Data;
+using ProductCategoryCrud.Helpers;
 using ProductCategoryCrud.Models;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,44 +15,46 @@ namespace ProductCategoryCrud.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly AppDbContext _context;
+        private readonly JwtSettings _jwtSettings;
 
-        public LoginController(IConfiguration configuration)
+        public LoginController(AppDbContext context, IOptions<JwtSettings> jwtSettings)
         {
-            _configuration = configuration;
+            _context = context;
+            _jwtSettings = jwtSettings.Value;
         }
 
-        // POST: api/Login
-        [HttpPost]
+        [HttpPost("login")]
         public IActionResult Login([FromBody] User user)
         {
-            // For simplicity, hardcode a valid user. Replace with your user validation logic.
-            if (user.Username == "testuser" && user.Password == "password123")
-            {
-                var token = GenerateJwtToken(user.Username);
-                return Ok(new { Token = token });
-            }
+            var dbUser = _context.Users
+                .Include(u => u.Role) // Asegúrate de tener la propiedad Role en User
+                .FirstOrDefault(u => u.Username == user.Username);
 
-            return Unauthorized();
+            if (dbUser == null || !PasswordHasher.VerifyPassword(user.PasswordHash, dbUser.PasswordHash))
+                return Unauthorized("Credenciales inválidas");
+
+            var token = GenerateJwtToken(dbUser);
+            return Ok(new { Token = token });
         }
 
-        private string GenerateJwtToken(string username)
+        private string GenerateJwtToken(User user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]));
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, username),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+                new Claim(ClaimTypes.Role, user.Role.Name), // Incluye el rol en el token
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var token = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"],
-                audience: jwtSettings["Audience"],
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(jwtSettings["ExpirationMinutes"])),
+                expires: DateTime.Now.AddMinutes(_jwtSettings.ExpirationMinutes),
                 signingCredentials: credentials
             );
 

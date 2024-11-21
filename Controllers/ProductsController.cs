@@ -23,6 +23,7 @@ namespace ProductCategoryCrud.Controllers
 
         // GET: api/Products
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
             return await _context.Products.ToListAsync();
@@ -44,6 +45,7 @@ namespace ProductCategoryCrud.Controllers
 
         // POST: api/Products
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
             // Check if the specified CategoryId exists
@@ -96,6 +98,7 @@ namespace ProductCategoryCrud.Controllers
 
         // DELETE: api/Products/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
