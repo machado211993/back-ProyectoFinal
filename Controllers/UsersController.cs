@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ProductCategoryCrud.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Admin")] // Solo Admin puede gestionar usuarios
@@ -47,6 +48,7 @@ namespace ProductCategoryCrud.Controllers
 
             return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
         }
+       
 
         // Otros métodos para PUT, DELETE, etc.
     }

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductCategoryCrud.Data;
@@ -10,7 +9,6 @@ namespace ProductCategoryCrud.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")] // Solo Admin puede gestionar roles
     public class RolesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -27,6 +25,20 @@ namespace ProductCategoryCrud.Controllers
             return await _context.Roles.ToListAsync();
         }
 
+        // GET: api/Roles/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Role>> GetRole(int id)
+        {
+            var role = await _context.Roles.FindAsync(id);
+
+            if (role == null)
+            {
+                return NotFound();
+            }
+
+            return role;
+        }
+
         // POST: api/Roles
         [HttpPost]
         public async Task<ActionResult<Role>> PostRole(Role role)
@@ -34,9 +46,59 @@ namespace ProductCategoryCrud.Controllers
             _context.Roles.Add(role);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetRoles), new { id = role.Id }, role);
+            return CreatedAtAction(nameof(GetRole), new { id = role.Id }, role);
         }
 
-        // Otros métodos para PUT, DELETE, etc.
+        // PUT: api/Roles/{id}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutRole(int id, Role role)
+        {
+            if (id != role.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(role).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!RoleExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // DELETE: api/Roles/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRole(int id)
+        {
+            var role = await _context.Roles.FindAsync(id);
+
+            if (role == null)
+            {
+                return NotFound();
+            }
+
+            _context.Roles.Remove(role);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool RoleExists(int id)
+        {
+            return _context.Roles.Any(e => e.Id == id);
+        }
     }
 }

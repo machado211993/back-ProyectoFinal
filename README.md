@@ -289,3 +289,281 @@ tabla `Products` incluye un campo adicional llamado `Score`.
 ---
 
 Este README cubre desde la creación del proyecto hasta la adición del campo `Score` y las pruebas de los endpoints.
+---------------------------------------------------------------------------------------------------------------------------------------
+ACTUALIZACION
+
+
+# ProductCategoryCrud - CRUD de Roles y Hashing de Contraseñas
+
+Este proyecto implementa un sistema para gestionar productos, categorías y usuarios, incluyendo un CRUD completo para roles y funcionalidad de hashing seguro para contraseñas.
+
+## Tabla de Contenidos
+1. [Requisitos](#requisitos)
+2. [Configuración Inicial](#configuración-inicial)
+3. [CRUD de Roles](#crud-de-roles)
+    - [Modelo `Role`](#modelo-role)
+    - [Controlador `RolesController`](#controlador-rolescontroller)
+    - [Migración y Actualización de la Base de Datos](#migración-y-actualización-de-la-base-de-datos)
+    - [Pruebas del CRUD](#pruebas-del-crud)
+4. [Hashing de Contraseñas](#hashing-de-contraseñas)
+    - [Modelo `User`](#modelo-user)
+    - [Registro de Usuarios](#registro-de-usuarios)
+5. [Pruebas de Usuario y Login](#pruebas-de-usuario-y-login)
+
+---
+
+## Requisitos
+
+1. **Herramientas necesarias**:
+   - .NET 6 o superior
+   - Entity Framework Core
+   - Visual Studio o Visual Studio Code
+   - SQLite (para la base de datos local)
+
+2. **Dependencias**:
+   - Swashbuckle para Swagger.
+   - BCrypt.Net para hashing de contraseñas.
+
+---
+
+## Configuración Inicial
+
+1. **Clonar el repositorio**:
+   ```bash
+   git clone <repositorio-url>
+   cd ProductCategoryCrud
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   dotnet restore
+   ```
+
+3. **Configurar la base de datos** en el archivo `appsettings.json`:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Data Source=products.db"
+     }
+   }
+   ```
+
+4. **Migrar y actualizar la base de datos**:
+   ```bash
+   dotnet ef migrations add InitialSetup
+   dotnet ef database update
+   ```
+
+---
+
+## CRUD de Roles
+
+### Modelo `Role`
+
+El modelo `Role` representa los roles en el sistema.
+
+```csharp
+namespace ProductCategoryCrud.Models
+{
+    public class Role
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+}
+```
+
+### Controlador `RolesController`
+
+El controlador permite gestionar roles con los siguientes métodos:
+- **Listar roles (`GET /api/Roles`)**
+- **Obtener un rol por ID (`GET /api/Roles/{id}`)**
+- **Crear un rol (`POST /api/Roles`)**
+- **Actualizar un rol (`PUT /api/Roles/{id}`)**
+- **Eliminar un rol (`DELETE /api/Roles/{id}`)**
+
+```csharp
+[Route("api/[controller]")]
+[ApiController]
+public class RolesController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public RolesController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
+    {
+        return await _context.Roles.ToListAsync();
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Role>> GetRole(int id)
+    {
+        var role = await _context.Roles.FindAsync(id);
+        if (role == null) return NotFound();
+        return role;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Role>> PostRole(Role role)
+    {
+        _context.Roles.Add(role);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetRole), new { id = role.Id }, role);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutRole(int id, Role role)
+    {
+        if (id != role.Id) return BadRequest();
+        _context.Entry(role).State = EntityState.Modified;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!_context.Roles.Any(r => r.Id == id)) return NotFound();
+            throw;
+        }
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteRole(int id)
+    {
+        var role = await _context.Roles.FindAsync(id);
+        if (role == null) return NotFound();
+        _context.Roles.Remove(role);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+}
+```
+
+### Migración y Actualización de la Base de Datos
+
+1. **Crear una migración**:
+   ```bash
+   dotnet ef migrations add AddRolesTable
+   ```
+
+2. **Actualizar la base de datos**:
+   ```bash
+   dotnet ef database update
+   ```
+
+### Pruebas del CRUD
+
+- **Crear un rol (`POST /api/Roles`)**:
+  ```json
+  {
+    "name": "Admin"
+  }
+  ```
+
+- **Actualizar un rol (`PUT /api/Roles/{id}`)**:
+  ```json
+  {
+    "id": 1,
+    "name": "Updated Role"
+  }
+  ```
+
+- **Eliminar un rol (`DELETE /api/Roles/{id}`)**.
+
+---
+
+## Hashing de Contraseñas
+
+### Modelo `User`
+
+El modelo `User` utiliza `PasswordHash` para almacenar contraseñas hasheadas.
+
+```csharp
+public class User
+{
+    public int Id { get; set; }
+    public string Username { get; set; }
+    public string PasswordHash { get; set; }
+    public int RoleId { get; set; }
+    public Role Role { get; set; }
+}
+```
+
+### Registro de Usuarios
+
+El método para registrar usuarios incluye el hashing de contraseñas:
+
+```csharp
+[HttpPost("register")]
+public async Task<IActionResult> Register([FromBody] UserRegisterDto registerDto)
+{
+    if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
+    {
+        return BadRequest("El nombre de usuario ya existe.");
+    }
+
+    var role = await _context.Roles.FindAsync(registerDto.RoleId);
+    if (role == null)
+    {
+        return BadRequest("El rol especificado no existe.");
+    }
+
+    var user = new User
+    {
+        Username = registerDto.Username,
+        PasswordHash = PasswordHasher.HashPassword(registerDto.Password),
+        RoleId = registerDto.RoleId
+    };
+
+    _context.Users.Add(user);
+    await _context.SaveChangesAsync();
+    return Ok("Usuario registrado exitosamente.");
+}
+```
+
+### DTO para Registro de Usuarios
+
+```csharp
+public class UserRegisterDto
+{
+    public string Username { get; set; }
+    public string Password { get; set; }
+    public int RoleId { get; set; }
+}
+```
+
+---
+
+## Pruebas de Usuario y Login
+
+- **Registro de un usuario (`POST /api/Login/register`)**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "password123",
+    "roleId": 1
+  }
+  ```
+
+- **Login de un usuario (`POST /api/Login/login`)**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "password123"
+  }
+  ```
+
+---
+
+## Notas Finales
+
+Este proyecto está configurado para trabajar con SQLite como base de datos por defecto. Asegúrate de actualizar las cadenas de conexión si decides usar otro proveedor.
+
+

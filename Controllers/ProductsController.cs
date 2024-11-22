@@ -8,8 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 
 
 namespace ProductCategoryCrud.Controllers
-{
-    [Authorize]
+{    
     [Route("api/[controller]")]
     [ApiController]
     public class ProductsController : ControllerBase
@@ -22,8 +21,7 @@ namespace ProductCategoryCrud.Controllers
         }
 
         // GET: api/Products
-        [HttpGet]
-        [Authorize]
+        [HttpGet]        
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
             return await _context.Products.ToListAsync();
@@ -60,8 +58,9 @@ namespace ProductCategoryCrud.Controllers
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
 
-        // PUT: api/Products/5
+        // PUT: api/Products/5        
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> PutProduct(int id, Product product)
         {
             if (id != product.Id)

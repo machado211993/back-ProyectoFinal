@@ -4,13 +4,21 @@ using ProductCategoryCrud.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.OpenApi.Models;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ProductCategoryCrud API", Version = "v1" });
+    c.UseInlineDefinitionsForEnums(); // Asegúrate de incluir esto si trabajas con esquemas anidados
+});
+
 
 // Register AppDbContext with SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>

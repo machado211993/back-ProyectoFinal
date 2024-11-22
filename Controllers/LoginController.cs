@@ -24,19 +24,54 @@ namespace ProductCategoryCrud.Controllers
             _jwtSettings = jwtSettings.Value;
         }
 
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] User user)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] UserRegisterDto registerDto)
         {
+            // Verificar si el nombre de usuario ya existe
+            if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
+            {
+                return BadRequest("El nombre de usuario ya existe.");
+            }
+
+            // Verificar que el rol exista
+            var role = await _context.Roles.FindAsync(registerDto.RoleId);
+            if (role == null)
+            {
+                return BadRequest("El rol especificado no existe.");
+            }
+
+            // Crear el usuario
+            var user = new User
+            {
+                Username = registerDto.Username,
+                PasswordHash = PasswordHasher.HashPassword(registerDto.Password), // Hashear la contraseña
+                RoleId = registerDto.RoleId
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return Ok("Usuario registrado exitosamente.");
+        }
+
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] UserLoginDto loginDto)
+        {
+            // Verificar si el usuario existe
             var dbUser = _context.Users
-                .Include(u => u.Role) // Asegúrate de tener la propiedad Role en User
-                .FirstOrDefault(u => u.Username == user.Username);
+                .Include(u => u.Role)
+                .FirstOrDefault(u => u.Username == loginDto.Username);
 
-            if (dbUser == null || !PasswordHasher.VerifyPassword(user.PasswordHash, dbUser.PasswordHash))
+            if (dbUser == null || !PasswordHasher.VerifyPassword(loginDto.Password, dbUser.PasswordHash))
+            {
                 return Unauthorized("Credenciales inválidas");
+            }
 
+            // Generar el token JWT
             var token = GenerateJwtToken(dbUser);
             return Ok(new { Token = token });
         }
+
 
         private string GenerateJwtToken(User user)
         {
