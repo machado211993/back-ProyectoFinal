@@ -13,7 +13,7 @@ namespace ProductCategoryCrud.Controllers
     
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")] // Solo Admin puede gestionar usuarios
+    [Authorize] // Solo Admin puede gestionar usuarios
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -48,6 +48,35 @@ namespace ProductCategoryCrud.Controllers
 
             return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
         }
+        
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            var username = User.Identity?.Name;
+
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized("El usuario no está autenticado.");
+            }
+
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user == null)
+            {
+                return NotFound("Usuario no encontrado.");
+            }
+
+            return Ok(new
+            {
+                user.Id,
+                user.Username,
+                Role = user.Role?.Name
+            });
+        }
+
        
 
         // Otros métodos para PUT, DELETE, etc.

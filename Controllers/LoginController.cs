@@ -51,7 +51,8 @@ namespace ProductCategoryCrud.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok("Usuario registrado exitosamente.");
+            //return Ok("Usuario registrado exitosamente.");
+            return Ok();
         }
 
         [HttpPost("login")]
@@ -74,26 +75,28 @@ namespace ProductCategoryCrud.Controllers
 
 
         private string GenerateJwtToken(User user)
-        {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+{
+    var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
+    var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                new Claim(ClaimTypes.Role, user.Role.Name), // Incluye el rol en el token
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+    var claims = new[]
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Username), // Nombre de usuario
+        new Claim(ClaimTypes.Name, user.Username), // Para User.Identity.Name
+        new Claim(ClaimTypes.Role, user.Role.Name), // Rol del usuario
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // ID único del token
+    };
 
-            var token = new JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(_jwtSettings.ExpirationMinutes),
-                signingCredentials: credentials
-            );
+    var token = new JwtSecurityToken(
+        issuer: _jwtSettings.Issuer,
+        audience: _jwtSettings.Audience,
+        claims: claims,
+        expires: DateTime.Now.AddMinutes(_jwtSettings.ExpirationMinutes),
+        signingCredentials: credentials
+    );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+    return new JwtSecurityTokenHandler().WriteToken(token);
+}
+
     }
 }
