@@ -4,6 +4,8 @@ using ProductCategoryCrud.Models;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace ProductCategoryCrud.Controllers
 {
@@ -104,5 +106,13 @@ namespace ProductCategoryCrud.Controllers
 
             return venta;
         }
+
+        // Nuevo método para listar todas las ventas
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Venta>>> GetVentas()
+        {
+            return await _context.Ventas.ToListAsync();
+        }
+        
     }
 }
